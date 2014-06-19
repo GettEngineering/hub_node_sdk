@@ -1,0 +1,11 @@
+{
+  "name": "hub_node_sdk",
+  "version": "0.0.1",
+  "description": "Node SDK for service hub",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Yarin Goldman",
+  "license": "ISC"
+}

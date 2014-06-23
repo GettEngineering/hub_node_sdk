@@ -4,8 +4,13 @@
   "description": "Node SDK for service hub",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "make test"
   },
   "author": "Yarin Goldman",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "mocha": "~1.20.1",
+    "chai": "~1.9.1",
+    "nock": "~0.37.0"
+  }
 }

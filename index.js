@@ -1,27 +1,52 @@
-var request = require('request')
-var configuration = require('./configuration.js')
+var request = require('request'),
+    configuration = require('./configuration.js'),
+    when = require('when');
 
-function error(message) { 
-  console['error'](message);
-  return message;
+var config = configuration;
+
+function publish(type, content, callback) {
+  /* jshint eqnull: true */
+
+  if (!config.get('endpoint_url')) throw new Error('endpoint_url missing');
+  var msg;
+  if (typeof(type) === 'string')
+    msg = { type: type };
+  else msg = opts;
+
+  if (!msg.env) msg.env = config.get('env');
+  if (!msg.env) throw new Error('env missing');
+
+  msg.content = content;
+
+  var options = {
+    url: config.get('endpoint_url') + "/api/v1/messages",
+    json: msg
+  };
+
+  request.post(options, function (err, response, body) {
+    callback(err, response);
+  });
+}
+
+function publishQ(type, content) {
+  return when.promise(function(resolve, reject) {
+    publish(type, content, function(err, response) {
+      if (err) {
+        reject(err, response);
+        return;
+      }
+
+      var code = Math.round(response.statusCode / 100);
+      if (code != 2)
+        reject(new Error("Unexpected response (", response.statusCode, ") from ServiceHub"), response);
+
+      resolve(response);
+    });
+  });
 }
 
 module.exports = {
-  publish: function(type, content, callback) {
-    if (!this.config.get('env')) return error('env missing');
-    if (!this.config.get('endpoint_url')) return error('endpoint_url missing');
-
-    var options = {
-      url: this.config.get('endpoint_url'),
-      form: { env: this.config.get('env'), type: type, content: encodeURIComponent(JSON.stringify(content)) }
-    };
-
-    request.post(options, function (err, response, body) {
-      callback(response);
-      if (err || response.statusCode != 200) {
-        error(response);
-      }
-    });
-  },
-  config: configuration
-}
+  publish: publish,
+  publishQ: publishQ,
+  config: config
+};

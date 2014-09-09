@@ -8,6 +8,10 @@
   },
   "author": "Yarin Goldman",
   "license": "ISC",
+  "dependencies": {
+    "request": "",
+    "when": ""
+  },
   "devDependencies": {
     "mocha": "~1.20.1",
     "chai": "~1.9.1",

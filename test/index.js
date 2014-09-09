@@ -1,50 +1,82 @@
 var chai = require('chai'),
-    should = chai.should();
+    should = chai.should(),
     hubClient = require('../index.js'),
     nock = require('nock');
 
 describe('#publish', function(done) {
-  it('raises an error when env is not configured', function() {
-    hubClient.config.configure({'endpoint_url': 'http://www.service-hub.com'});
-    hubClient.publish('order_created', {}).should.equal('env missing');
-  });
+  describe("Configuration errors", function() {
+    it('raises an error when env is not configured', function() {
+      hubClient.config.configure({'endpoint_url': 'http://www.service-hub.com'});
 
-  it('raises an error when endpoint_url is not configured', function() {
-    hubClient.config.configure({'env': 'il-qa2'});
-    hubClient.publish('order_created', {}).should.equal('endpoint_url missing');
-  });
+      (function(){
+        hubClient.publish('order_created', {});
+      }).should.throw(Error, "env missing");
+    });
 
-  it('publishes a message to hub', function(done) {
-    hubClient.config.configure({'env': 'il-qa2', 'endpoint_url': 'http://www.service-hub.com'});
+    it('raises an error when endpoint_url is not configured', function() {
+      hubClient.config.configure({'env': 'il-qa2'});
 
-    nock(hubClient.config.get('endpoint_url'))
-        .post('/', { 
-          type: 'order_created', 
-          env: 'il-qa2', 
-          content: encodeURIComponent(JSON.stringify({ "some": "content" })) 
-        })
-        .reply(204);
-
-    hubClient.publish('order_created', { "some": "content" }, function(response) {
-      response.statusCode.should.equal(204);
-      done();
+      (function(){
+        hubClient.publish('order_created', {});
+      }).should.throw(Error, "endpoint_url missing");
     });
   });
 
-  it("logs the request when hub didn't return success code", function(done) {
-    hubClient.config.configure({'env': 'il-qa2', 'endpoint_url': 'http://www.service-hub.com'});
+  describe("Valid configuration", function() {
+    var SEND_MSG_PATH = "/api/v1/messages";
 
-    nock(hubClient.config.get('endpoint_url'))
-        .post('/', { 
-          type: 'order_created', 
-          env: 'il-qa2', 
-          content: encodeURIComponent(JSON.stringify({ "some": "content" })) 
-        })
-        .reply(500);
-
-    hubClient.publish('order_created', { "some": "content" }, function(response) {
-      response.statusCode.should.equal(500);
-      done();
+    beforeEach(function() {
+      hubClient.config.configure({'env': 'il-qa2', 'endpoint_url': 'http://www.service-hub.com'});
     });
-  }); 
+
+    describe("Callbacks", function() {
+      it('publishes a message to hub', function(done) {
+        nock(hubClient.config.get('endpoint_url'))
+            .post(SEND_MSG_PATH, {
+              type: 'order_created',
+              env: 'il-qa2',
+              content: { "some": "content" }
+            })
+            .reply(204);
+
+        hubClient.publish('order_created', { "some": "content" }, function(err, response) {
+          response.statusCode.should.equal(204);
+          done();
+        });
+      });
+    });
+
+    describe("Promises", function() {
+      it("resolves on success", function(done) {
+        nock(hubClient.config.get('endpoint_url'))
+          .post(SEND_MSG_PATH, {
+            type: 'order_created',
+            env: 'il-qa2',
+            content: { "some": "content" }
+          })
+          .reply(204);
+
+        hubClient.publishQ('order_created', {'some': 'content'})
+          .then(function() {
+            done();
+          });
+      });
+
+
+      it ('rejects on failure', function(done) {
+        nock(hubClient.config.get('endpoint_url'))
+          .post(SEND_MSG_PATH, {
+            type: 'order_created',
+            env: 'il-qa2',
+            content: {"some": "content"}
+          })
+          .reply(500);
+
+        hubClient.publishQ('order_created', {'some': 'content'})
+          .catch(function(err) {
+            done();
+          });
+      });
+    });
+  });
 });
